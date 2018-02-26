@@ -1,10 +1,7 @@
 package edu.stanford.futuredata.macrobase.analysis.summary.aplinear;
 
-import edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics.EstimatedSupportMetric;
-import edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics.QualityMetric;
+import edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics.*;
 import edu.stanford.futuredata.macrobase.analysis.summary.util.AttributeEncoder;
-import edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics.AggregationOp;
-import edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics.EstimatedGlobalRatioMetric;
 import edu.stanford.futuredata.macrobase.datamodel.DataFrame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,62 +13,99 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 /**
- * Summarizer that works over both cube and row-based labeled ratio-based
- * outlier summarization.
+ * Summarizer that works over cubed data with moments.
  */
 public class APLMomentSummarizer extends APLSummarizer {
     private Logger log = LoggerFactory.getLogger("APLMomentSummarizer");
+    private int ka;
+    private int kb;
     private String minColumn = null;
     private String maxColumn = null;
     private String logMinColumn = null;
     private String logMaxColumn = null;
-    private List<String> momentColumns;
-    private List<String> logMomentColumns;
-    private double percentile;
-    private boolean useCascade;
+    private List<String> powerSumColumns;
+    private List<String> logSumColumns;
+    private double cutoff;
+    private boolean useCascade = true;
     private boolean useSupport = true;
     private boolean useGlobalRatio = true;
 
     @Override
     public List<String> getAggregateNames() {
         ArrayList<String> aggregateNames = new ArrayList<>();
-        aggregateNames.add("Minimum");
-        aggregateNames.add("Maximum");
-        aggregateNames.add("Log Minimum");
-        aggregateNames.add("Log Maximum");
-        aggregateNames.addAll(momentColumns);
-        aggregateNames.addAll(logMomentColumns);
+        if (ka > 0) {
+            aggregateNames.add("Minimum");
+            aggregateNames.add("Maximum");
+            aggregateNames.addAll(powerSumColumns);
+        }
+        if (kb > 0) {
+            aggregateNames.add("Log Minimum");
+            aggregateNames.add("Log Maximum");
+            aggregateNames.addAll(logSumColumns);
+        }
         return aggregateNames;
+    }
+
+    public int getNumAggregates() {
+        int numAggregates = 0;
+        if (ka > 0) {
+            numAggregates += 2 + ka;
+        }
+        if (kb > 0) {
+            numAggregates += 2 + kb;
+        }
+        return numAggregates;
     }
 
     @Override
     public double[][] getAggregateColumns(DataFrame input) {
-        double[][] aggregateColumns = new double[4+momentColumns.size()+logMomentColumns.size()][];
+        int numAggregates = getNumAggregates();
+        double[][] aggregateColumns = new double[numAggregates][];
+
         int curCol = 0;
-        aggregateColumns[curCol++] = input.getDoubleColumnByName(minColumn);
-        aggregateColumns[curCol++] = input.getDoubleColumnByName(maxColumn);
-        aggregateColumns[curCol++] = input.getDoubleColumnByName(logMinColumn);
-        aggregateColumns[curCol++] = input.getDoubleColumnByName(logMaxColumn);
-        for (int i = 0; i < momentColumns.size(); i++) {
-            aggregateColumns[curCol++] = input.getDoubleColumnByName(momentColumns.get(i));
+        if (ka > 0) {
+            aggregateColumns[curCol++] = input.getDoubleColumnByName(minColumn);
+            aggregateColumns[curCol++] = input.getDoubleColumnByName(maxColumn);
+            for (int i = 0; i < powerSumColumns.size(); i++) {
+                aggregateColumns[curCol++] = input.getDoubleColumnByName(powerSumColumns.get(i));
+            }
         }
-        for (int i = 0; i < logMomentColumns.size(); i++) {
-            aggregateColumns[curCol++] = input.getDoubleColumnByName(logMomentColumns.get(i));
+        if (kb > 0) {
+            aggregateColumns[curCol++] = input.getDoubleColumnByName(logMinColumn);
+            aggregateColumns[curCol++] = input.getDoubleColumnByName(logMaxColumn);
+            for (int i = 0; i < logSumColumns.size(); i++) {
+                aggregateColumns[curCol++] = input.getDoubleColumnByName(logSumColumns.get(i));
+            }
         }
 
-        processCountCol(input, momentColumns.get(0), aggregateColumns[0].length);
+        if (ka > 0) {
+            processCountCol(input, powerSumColumns.get(0), aggregateColumns[0].length);
+        } else {
+            processCountCol(input, logSumColumns.get(0), aggregateColumns[0].length);
+        }
+
         return aggregateColumns;
     }
 
     @Override
     public AggregationOp[] getAggregationOps() {
-        AggregationOp[] aggregationOps = new AggregationOp[4+momentColumns.size()+logMomentColumns.size()];
-        aggregationOps[0] = AggregationOp.MIN;
-        aggregationOps[1] = AggregationOp.MAX;
-        aggregationOps[2] = AggregationOp.MIN;
-        aggregationOps[3] = AggregationOp.MAX;
-        for (int i = 4; i < aggregationOps.length; i++) {
-            aggregationOps[i] = AggregationOp.SUM;
+        int numAggregates = getNumAggregates();
+        AggregationOp[] aggregationOps = new AggregationOp[numAggregates];
+
+        int curCol = 0;
+        if (ka > 0) {
+            aggregationOps[curCol++] = AggregationOp.MIN;
+            aggregationOps[curCol++] = AggregationOp.MAX;
+            for (int i = 0; i < ka; i++) {
+                aggregationOps[curCol++] = AggregationOp.SUM;
+            }
+        }
+        if (kb > 0) {
+            aggregationOps[curCol++] = AggregationOp.MIN;
+            aggregationOps[curCol++] = AggregationOp.MAX;
+            for (int i = 0; i < kb; i++) {
+                aggregationOps[curCol++] = AggregationOp.SUM;
+            }
         }
         return aggregationOps;
     }
@@ -84,18 +118,37 @@ public class APLMomentSummarizer extends APLSummarizer {
     @Override
     public List<QualityMetric> getQualityMetricList() {
         List<QualityMetric> qualityMetricList = new ArrayList<>();
+
         if (useSupport) {
-            EstimatedSupportMetric metric = new EstimatedSupportMetric(0, 1, 2, 3, 4,
-                    4+momentColumns.size(),(100.0 - percentile) / 100.0);
+            EstimatedSupportMetric metric = new EstimatedSupportMetric((100.0 - cutoff) / 100.0, ka, kb);
             metric.setUseCascade(true);
             qualityMetricList.add(metric);
         }
         if (useGlobalRatio) {
-            EstimatedGlobalRatioMetric metric = new EstimatedGlobalRatioMetric(0, 1, 2, 3, 4,
-                    4+momentColumns.size(),(100.0 - percentile) / 100.0);
+            EstimatedGlobalRatioMetric metric = new EstimatedGlobalRatioMetric((100.0 - cutoff) / 100.0, ka, kb);
             metric.setUseCascade(true);
             qualityMetricList.add(metric);
         }
+
+        int curCol = 0;
+        if (ka > 0) {
+            int minIdx = curCol++;
+            int maxIdx = curCol++;
+            int powerSumsBaseIdx = curCol;
+            curCol += ka;
+            for (QualityMetric metric : qualityMetricList) {
+                ((EstimatedQualityMetric)metric).setStandardIndices(minIdx, maxIdx, powerSumsBaseIdx);
+            }
+        }
+        if (kb > 0) {
+            int logMinIdx = curCol++;
+            int logMaxIdx = curCol++;
+            int logSumsBaseIdx = curCol;
+            for (QualityMetric metric : qualityMetricList) {
+                ((EstimatedQualityMetric)metric).setLogIndices(logMinIdx, logMaxIdx, logSumsBaseIdx);
+            }
+        }
+
         return qualityMetricList;
     }
 
@@ -118,18 +171,18 @@ public class APLMomentSummarizer extends APLSummarizer {
         for (int i = 0; i < counts.length; i++) {
             count += counts[i];
         }
-        return count * percentile / 100.0;
+        return count * cutoff / 100.0;
     }
 
+    public void setKa(int ka) { this.ka = ka; }
+    public void setKb(int kb) { this.kb = kb; }
     public String getMinColumn() {
         return minColumn;
     }
     public void setMinColumn(String minColumn) {
         this.minColumn = minColumn;
     }
-    public String getMaxColumn() {
-        return maxColumn;
-    }
+    public String getMaxColumn() { return maxColumn; }
     public void setMaxColumn(String maxColumn) {
         this.maxColumn = maxColumn;
     }
@@ -139,17 +192,17 @@ public class APLMomentSummarizer extends APLSummarizer {
     public void setLogMaxColumn(String logMaxColumn) {
         this.logMaxColumn = logMaxColumn;
     }
-    public List<String> getMomentColumns() {
-        return momentColumns;
+    public List<String> getPowerSumColumns() {
+        return powerSumColumns;
     }
-    public void setMomentColumns(List<String> momentColumns) {
-        this.momentColumns = momentColumns;
+    public void setPowerSumColumns(List<String> powerSumColumns) {
+        this.powerSumColumns = powerSumColumns;
     }
-    public void setLogMomentColumns(List<String> logMomentColumns) {
-        this.logMomentColumns = logMomentColumns;
+    public void setLogSumColumns(List<String> logSumColumns) {
+        this.logSumColumns = logSumColumns;
     }
-    public void setPercentile(double percentile) {
-        this.percentile = percentile;
+    public void setCutoff(double cutoff) {
+        this.cutoff = cutoff;
     }
     public double getMinRatioMetric() {
         return minRatioMetric;

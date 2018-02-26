@@ -9,9 +9,8 @@ import java.util.Collections;
  * Measures the relative outlier rate w.r.t. the global outlier rate
  */
 public class EstimatedGlobalRatioMetric extends EstimatedQualityMetric {
-    public EstimatedGlobalRatioMetric(int minIdx, int maxIdx, int logMinIdx, int logMaxIdx, int momentsBaseIdx,
-                                      int logMomentsBaseIdx, double quantile) {
-        super(minIdx, maxIdx, logMinIdx, logMaxIdx, momentsBaseIdx, logMomentsBaseIdx, quantile);
+    public EstimatedGlobalRatioMetric(double quantile, int ka, int kb) {
+        super(quantile, ka, kb);
     }
 
     @Override

@@ -10,49 +10,69 @@ import java.util.Collections;
  * Quality metric used in the power cube pipeline. Uses min, max and moments.
  */
 public abstract class EstimatedQualityMetric implements QualityMetric {
-    private int minIdx = 0;
-    private int maxIdx = 1;
-    private int logMinIdx = 2;
-    private int logMaxIdx = 3;
-    int momentsBaseIdx = 4;
-    private int logMomentsBaseIdx = 4 + 9;
+    int ka;
+    int kb;
+    private int minIdx;
+    private int maxIdx;
+    private int logMinIdx;
+    private int logMaxIdx;
+    int powerSumsBaseIdx;
+    int logSumsBaseIdx;
     double quantile;  // eg, 0.99
     double cutoff;
     double globalOutlierCount;
     private double tolerance = 1e-9;
     private boolean useCascade = true;
 
-    EstimatedQualityMetric(int minIdx, int maxIdx, int logMinIdx, int logMaxIdx, int momentsBaseIdx,
-                           int logMomentsBaseIdx, double quantile) {
-        this.minIdx = minIdx;
-        this.maxIdx = maxIdx;
-        this.logMinIdx = logMinIdx;
-        this.logMaxIdx = logMaxIdx;
-        this.momentsBaseIdx = momentsBaseIdx;
-        this.logMomentsBaseIdx = logMomentsBaseIdx;
+    EstimatedQualityMetric(double quantile, int ka, int kb) {
         this.quantile = quantile;
+        this.ka = ka;
+        this.kb = kb;
     }
 
     CMomentSketch sketchFromAggregates(double[] aggregates) {
         CMomentSketch ms = new CMomentSketch(tolerance);
-        double min = aggregates[minIdx];
-        double max = aggregates[maxIdx];
-        double logMin = aggregates[logMinIdx];
-        double logMax = aggregates[logMaxIdx];
-        double[] powerSums = Arrays.copyOfRange(aggregates, momentsBaseIdx, logMomentsBaseIdx);
-        double[] logSums = Arrays.copyOfRange(aggregates, logMomentsBaseIdx, aggregates.length);
+
+        double min = 0;
+        double max = 1;
+        double logMin = 0;
+        double logMax = 1;
+        double[] powerSums = new double[]{1};
+        double[] logSums = new double[]{1};
+
+        if (ka > 0) {
+            min = aggregates[minIdx];
+            max = aggregates[maxIdx];
+            powerSums = Arrays.copyOfRange(aggregates, powerSumsBaseIdx, powerSumsBaseIdx + ka);
+        }
+        if (kb > 0) {
+            logMin = aggregates[logMinIdx];
+            logMax = aggregates[logMaxIdx];
+            logSums = Arrays.copyOfRange(aggregates, logSumsBaseIdx, logSumsBaseIdx + kb);
+        }
+
         ms.setStats(min, max, logMin, logMax, powerSums, logSums);
         return ms;
     }
 
     @Override
     public QualityMetric initialize(double[] globalAggregates) {
-        globalOutlierCount = globalAggregates[momentsBaseIdx] * (1.0 - quantile);
+        if (ka > 0) {
+            globalOutlierCount = globalAggregates[powerSumsBaseIdx] * (1.0 - quantile);
+        } else {
+            globalOutlierCount = globalAggregates[logSumsBaseIdx] * (1.0 - quantile);
+        }
+
         CMomentSketch ms = sketchFromAggregates(globalAggregates);
         try {
             cutoff = ms.getQuantiles(Collections.singletonList(quantile))[0];
         } catch (Exception e) {
-            cutoff = quantile * (globalAggregates[maxIdx] - globalAggregates[minIdx]) + globalAggregates[minIdx];
+            if (ka > 0) {
+                cutoff = quantile * (globalAggregates[maxIdx] - globalAggregates[minIdx]) + globalAggregates[minIdx];
+            } else {
+                cutoff = quantile * (Math.exp(globalAggregates[logMaxIdx]) - Math.exp(globalAggregates[logMinIdx])) +
+                        Math.exp(globalAggregates[minIdx]);
+            }
         }
         return this;
     }
@@ -70,55 +90,74 @@ public abstract class EstimatedQualityMetric implements QualityMetric {
         return action;
     }
 
+    private Action actionIfBelowThreshold() {
+        if (isMonotonic()) {
+            return Action.PRUNE;
+        } else {
+            return Action.NEXT;
+        }
+    }
+
     private Action getActionCascade(double[] aggregates, double threshold) {
         double outlierRateNeeded = getOutlierRateNeeded(aggregates, threshold);
 
         // Stage 1: simple checks on min and max
-        if (aggregates[maxIdx] < cutoff || outlierRateNeeded > 1.0) {
-            return Action.PRUNE;
+        if (ka > 0) {
+            if (aggregates[maxIdx] < cutoff || outlierRateNeeded > 1.0) {
+                return actionIfBelowThreshold();
+            }
+            if (aggregates[minIdx] >= cutoff && outlierRateNeeded <= 1.0) {
+                return Action.KEEP;
+            }
+        } else {
+            if (Math.exp(aggregates[logMaxIdx]) < cutoff || outlierRateNeeded > 1.0) {
+                return actionIfBelowThreshold();
+            }
         }
-        if (aggregates[minIdx] >= cutoff && outlierRateNeeded <= 1.0) {
+
+        CMomentSketch ms = sketchFromAggregates(aggregates);
+
+        // Stage 2: Markov bounds
+        double[] markovBounds = ms.boundGreaterThanThresholdMarkov(cutoff);
+        if (markovBounds[1] < outlierRateNeeded) {
+            return actionIfBelowThreshold();
+        }
+        if (markovBounds[0] >= outlierRateNeeded) {
             return Action.KEEP;
         }
 
-        double min = aggregates[minIdx];
-        double max = aggregates[maxIdx];
-        double logMin = aggregates[logMinIdx];
-        double logMax = aggregates[logMaxIdx];
-        double[] powerSums = Arrays.copyOfRange(aggregates, momentsBaseIdx, logMomentsBaseIdx);
-        double[] logSums = Arrays.copyOfRange(aggregates, logMomentsBaseIdx, aggregates.length);
-
-        // Stage 2: Markov bounds
-//        Action action = MarkovBound.isPastThreshold(outlierRateNeeded, cutoff, min, max, logMin, logMax, powerSums, logSums);
-        Action action = Action.KEEP;
-        if (action != null) {
-            return action;
-        }
-
-        CMomentSketch ms = new CMomentSketch(tolerance);
-        ms.setStats(min, max, logMin, logMax, powerSums, logSums);
-
         // Stage 3: Racz bounds
-        double[] bounds = ms.boundGreaterThanThreshold(cutoff);
-        if (bounds[1] < outlierRateNeeded) {
-            return Action.PRUNE;
+        double[] raczBounds = ms.boundGreaterThanThresholdRacz(cutoff);
+        if (raczBounds[1] < outlierRateNeeded) {
+            return actionIfBelowThreshold();
         }
-        if (bounds[0] >= outlierRateNeeded) {
+        if (raczBounds[0] >= outlierRateNeeded) {
             return Action.KEEP;
         }
 
         // Stage 4: MaxEnt estimate
         double outlierRateEstimate = ms.estimateGreaterThanThreshold(cutoff);
-        return (outlierRateEstimate >= outlierRateNeeded) ? Action.KEEP : Action.PRUNE;
+        return (outlierRateEstimate >= outlierRateNeeded) ? Action.KEEP : actionIfBelowThreshold();
     }
 
     private Action getActionMaxent(double[] aggregates, double threshold) {
         double outlierRateNeeded = getOutlierRateNeeded(aggregates, threshold);;
         CMomentSketch ms = sketchFromAggregates(aggregates);
         double outlierRateEstimate = ms.estimateGreaterThanThreshold(cutoff);
-        return (outlierRateEstimate >= outlierRateNeeded) ? Action.KEEP : Action.PRUNE;
+        return (outlierRateEstimate >= outlierRateNeeded) ? Action.KEEP : actionIfBelowThreshold();
     }
 
     public void setUseCascade(boolean useCascade) { this.useCascade = useCascade; }
     public void setTolerance(double tolerance) { this.tolerance = tolerance; }
+    
+    public void setStandardIndices(int minIdx, int maxIdx, int powerSumsBaseIdx) {
+        this.minIdx = minIdx;
+        this.maxIdx = maxIdx;
+        this.powerSumsBaseIdx = powerSumsBaseIdx;
+    }
+    public void setLogIndices(int logMinIdx, int logMaxIdx, int logSumsBaseIdx) {
+        this.logMinIdx = logMinIdx;
+        this.logMaxIdx = logMaxIdx;
+        this.logSumsBaseIdx = logSumsBaseIdx;
+    }
 }

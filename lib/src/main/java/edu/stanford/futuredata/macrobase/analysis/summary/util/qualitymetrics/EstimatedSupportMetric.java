@@ -9,9 +9,8 @@ import java.util.Collections;
  * Measures how large a subgroup is relative to a global count
  */
 public class EstimatedSupportMetric extends EstimatedQualityMetric {
-    public EstimatedSupportMetric(int minIdx, int maxIdx, int logMinIdx, int logMaxIdx, int momentsBaseIdx,
-                                  int logMomentsBaseIdx, double quantile) {
-        super(minIdx, maxIdx, logMinIdx, logMaxIdx, momentsBaseIdx, logMomentsBaseIdx, quantile);
+    public EstimatedSupportMetric(double quantile, int ka, int kb) {
+        super(quantile, ka, kb);
     }
 
     @Override
@@ -22,11 +21,19 @@ public class EstimatedSupportMetric extends EstimatedQualityMetric {
     @Override
     public double value(double[] aggregates) {
         CMomentSketch ms = sketchFromAggregates(aggregates);
-        return ms.estimateGreaterThanThreshold(cutoff) * aggregates[momentsBaseIdx] / globalOutlierCount;
+        if (ka > 0) {
+            return ms.estimateGreaterThanThreshold(cutoff) * aggregates[powerSumsBaseIdx] / globalOutlierCount;
+        } else {
+            return ms.estimateGreaterThanThreshold(cutoff) * aggregates[logSumsBaseIdx] / globalOutlierCount;
+        }
     }
 
     public double getOutlierRateNeeded(double[] aggregates, double threshold) {
-        return threshold * globalOutlierCount / aggregates[momentsBaseIdx];
+        if (ka > 0) {
+            return threshold * globalOutlierCount / aggregates[powerSumsBaseIdx];
+        } else {
+            return threshold * globalOutlierCount / aggregates[logSumsBaseIdx];
+        }
     }
 
     @Override
