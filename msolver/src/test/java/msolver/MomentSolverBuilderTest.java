@@ -16,10 +16,7 @@ public class MomentSolverBuilderTest {
         MomentStruct m = new MomentStruct();
         m.min = data.getMin();
         m.max = data.getMax();
-        m.logMin = data.getLogMin();
-        m.logMax = data.getLogMax();
         m.powerSums = data.getPowerSums(10);
-        m.logSums = data.getLogSums(1);
 
         MomentSolverBuilder builder = new MomentSolverBuilder(m);
         builder.setVerbose(false);
@@ -35,5 +32,4 @@ public class MomentSolverBuilderTest {
         double[] qs = builder.getQuantiles(ps);
         assertEquals(0.693, qs[1], 0.001);
     }
-
 }
