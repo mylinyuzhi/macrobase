@@ -1,16 +1,12 @@
 package edu.stanford.futuredata.macrobase.analysis.summary.aplinear;
 
 import edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics.*;
-import edu.stanford.futuredata.macrobase.analysis.summary.util.AttributeEncoder;
 import edu.stanford.futuredata.macrobase.datamodel.DataFrame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.IntStream;
 
 /**
  * Summarizer that works over cubed data with moments.
@@ -25,7 +21,7 @@ public class APLMomentSummarizer extends APLSummarizer {
     private String logMaxColumn = null;
     private List<String> powerSumColumns;
     private List<String> logSumColumns;
-    private double cutoff;
+    private double quantileCutoff;
     private boolean useCascade = true;
     private boolean useSupport = true;
     private boolean useGlobalRatio = true;
@@ -34,14 +30,14 @@ public class APLMomentSummarizer extends APLSummarizer {
     public List<String> getAggregateNames() {
         ArrayList<String> aggregateNames = new ArrayList<>();
         if (ka > 0) {
-            aggregateNames.add("Minimum");
-            aggregateNames.add("Maximum");
-            aggregateNames.addAll(powerSumColumns);
+            aggregateNames.add(getMinColumn());
+            aggregateNames.add(getMaxColumn());
+            aggregateNames.addAll(getPowerSumColumns());
         }
         if (kb > 0) {
-            aggregateNames.add("Log Minimum");
-            aggregateNames.add("Log Maximum");
-            aggregateNames.addAll(logSumColumns);
+            aggregateNames.add(getLogMinColumn());
+            aggregateNames.add(getLogMaxColumn());
+            aggregateNames.addAll(getLogSumColumns());
         }
         return aggregateNames;
     }
@@ -120,12 +116,12 @@ public class APLMomentSummarizer extends APLSummarizer {
         List<QualityMetric> qualityMetricList = new ArrayList<>();
 
         if (useSupport) {
-            EstimatedSupportMetric metric = new EstimatedSupportMetric((100.0 - cutoff) / 100.0, ka, kb);
+            EstimatedSupportMetric metric = new EstimatedSupportMetric(quantileCutoff, ka, kb);
             metric.setUseCascade(true);
             qualityMetricList.add(metric);
         }
         if (useGlobalRatio) {
-            EstimatedGlobalRatioMetric metric = new EstimatedGlobalRatioMetric((100.0 - cutoff) / 100.0, ka, kb);
+            EstimatedGlobalRatioMetric metric = new EstimatedGlobalRatioMetric(quantileCutoff, ka, kb);
             metric.setUseCascade(true);
             qualityMetricList.add(metric);
         }
@@ -137,7 +133,7 @@ public class APLMomentSummarizer extends APLSummarizer {
             int powerSumsBaseIdx = curCol;
             curCol += ka;
             for (QualityMetric metric : qualityMetricList) {
-                ((EstimatedQualityMetric)metric).setStandardIndices(minIdx, maxIdx, powerSumsBaseIdx);
+                ((MomentOutlierMetric)metric).setStandardIndices(minIdx, maxIdx, powerSumsBaseIdx);
             }
         }
         if (kb > 0) {
@@ -145,7 +141,7 @@ public class APLMomentSummarizer extends APLSummarizer {
             int logMaxIdx = curCol++;
             int logSumsBaseIdx = curCol;
             for (QualityMetric metric : qualityMetricList) {
-                ((EstimatedQualityMetric)metric).setLogIndices(logMinIdx, logMaxIdx, logSumsBaseIdx);
+                ((MomentOutlierMetric)metric).setLogIndices(logMinIdx, logMaxIdx, logSumsBaseIdx);
             }
         }
 
@@ -171,7 +167,7 @@ public class APLMomentSummarizer extends APLSummarizer {
         for (int i = 0; i < counts.length; i++) {
             count += counts[i];
         }
-        return count * cutoff / 100.0;
+        return count * (1.0-quantileCutoff);
     }
 
     public void setKa(int ka) { this.ka = ka; }
@@ -186,9 +182,11 @@ public class APLMomentSummarizer extends APLSummarizer {
     public void setMaxColumn(String maxColumn) {
         this.maxColumn = maxColumn;
     }
+    public String getLogMinColumn() { return logMinColumn;}
     public void setLogMinColumn(String logMinColumn) {
         this.logMinColumn = logMinColumn;
     }
+    public String getLogMaxColumn() { return logMaxColumn;}
     public void setLogMaxColumn(String logMaxColumn) {
         this.logMaxColumn = logMaxColumn;
     }
@@ -198,11 +196,12 @@ public class APLMomentSummarizer extends APLSummarizer {
     public void setPowerSumColumns(List<String> powerSumColumns) {
         this.powerSumColumns = powerSumColumns;
     }
+    public List<String> getLogSumColumns() { return logSumColumns;}
     public void setLogSumColumns(List<String> logSumColumns) {
         this.logSumColumns = logSumColumns;
     }
-    public void setCutoff(double cutoff) {
-        this.cutoff = cutoff;
+    public void setQuantileCutoff(double cutoff) {
+        this.quantileCutoff = cutoff;
     }
     public double getMinRatioMetric() {
         return minRatioMetric;

@@ -1,14 +1,13 @@
 package edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics;
 
-import sketches.CMomentSketch;
-
-import java.util.Arrays;
-import java.util.Collections;
+import msolver.ChebyshevMomentSolver2;
+import msolver.MomentSolverBuilder;
+import msolver.struct.MomentStruct;
 
 /**
  * Measures the relative outlier rate w.r.t. the global outlier rate
  */
-public class EstimatedGlobalRatioMetric extends EstimatedQualityMetric {
+public class EstimatedGlobalRatioMetric extends MomentOutlierMetric {
     public EstimatedGlobalRatioMetric(double quantile, int ka, int kb) {
         super(quantile, ka, kb);
     }
@@ -20,8 +19,8 @@ public class EstimatedGlobalRatioMetric extends EstimatedQualityMetric {
 
     @Override
     public double value(double[] aggregates) {
-        CMomentSketch ms = sketchFromAggregates(aggregates);
-        return ms.estimateGreaterThanThreshold(cutoff) / (1.0 - quantile);
+        MomentSolverBuilder builder = getBuilderFromAggregates(aggregates);
+        return (1-builder.getCDF(cutoff)) / (1.0 - quantile);
     }
 
     public double getOutlierRateNeeded(double[] aggregates, double threshold) {

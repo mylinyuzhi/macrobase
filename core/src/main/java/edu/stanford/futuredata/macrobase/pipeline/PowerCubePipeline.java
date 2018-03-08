@@ -1,22 +1,18 @@
 package edu.stanford.futuredata.macrobase.pipeline;
 
-import edu.stanford.futuredata.macrobase.analysis.classify.*;
 import edu.stanford.futuredata.macrobase.analysis.summary.aplinear.*;
 import edu.stanford.futuredata.macrobase.datamodel.DataFrame;
 import edu.stanford.futuredata.macrobase.datamodel.Schema;
-import edu.stanford.futuredata.macrobase.ingest.CSVDataFrameWriter;
 import edu.stanford.futuredata.macrobase.util.MacrobaseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.PrintWriter;
 import java.util.*;
 
 /**
  * Pipeline for cubed data that has min, max and moment aggregates
  */
 public class PowerCubePipeline implements Pipeline {
-
     Logger log = LoggerFactory.getLogger("PowerCubePipeline");
 
     // Ingest
@@ -51,17 +47,14 @@ public class PowerCubePipeline implements Pipeline {
 
         cutoff = conf.get("cutoff", 1.0);
 
-//        includeHi = conf.get("includeHi", true);
-//        includeLo = conf.get("includeLo", true);
-
-        ka = conf.get("ka", 0);
-        kb = conf.get("kb", 0);
         minColumn = Optional.ofNullable(conf.get("minColumn"));
         maxColumn = Optional.ofNullable(conf.get("maxColumn"));
         powerSumColumns = conf.get("powerSumColumns", new ArrayList<String>());
+        ka = powerSumColumns.size();
         logMinColumn = Optional.ofNullable(conf.get("logMinColumn"));
         logMaxColumn = Optional.ofNullable(conf.get("logMaxColumn"));
         logSumColumns = conf.get("logSumColumns", new ArrayList<String>());
+        kb = logSumColumns.size();
 
         attributes = conf.get("attributes");
         minSupport = conf.get("minSupport", 3.0);
@@ -145,7 +138,7 @@ public class PowerCubePipeline implements Pipeline {
         summarizer.setAttributes(attributes);
         summarizer.setMinSupport(minSupport);
         summarizer.setMinRatioMetric(minRatioMetric);
-        summarizer.setCutoff(cutoff);
+        summarizer.setQuantileCutoff(1.0 - cutoff/100.0);
         return summarizer;
     }
 }

@@ -1,14 +1,13 @@
 package edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics;
 
-import sketches.CMomentSketch;
-
-import java.util.Arrays;
-import java.util.Collections;
+import msolver.ChebyshevMomentSolver2;
+import msolver.MomentSolverBuilder;
+import msolver.struct.MomentStruct;
 
 /**
  * Measures how large a subgroup is relative to a global count
  */
-public class EstimatedSupportMetric extends EstimatedQualityMetric {
+public class EstimatedSupportMetric extends MomentOutlierMetric {
     public EstimatedSupportMetric(double quantile, int ka, int kb) {
         super(quantile, ka, kb);
     }
@@ -20,12 +19,14 @@ public class EstimatedSupportMetric extends EstimatedQualityMetric {
 
     @Override
     public double value(double[] aggregates) {
-        CMomentSketch ms = sketchFromAggregates(aggregates);
+        MomentSolverBuilder builder = getBuilderFromAggregates(aggregates);
+        double currentCount = 0;
         if (ka > 0) {
-            return ms.estimateGreaterThanThreshold(cutoff) * aggregates[powerSumsBaseIdx] / globalOutlierCount;
+            currentCount = aggregates[powerSumsBaseIdx];
         } else {
-            return ms.estimateGreaterThanThreshold(cutoff) * aggregates[logSumsBaseIdx] / globalOutlierCount;
+            currentCount = aggregates[logSumsBaseIdx];
         }
+        return (1 - builder.getCDF(cutoff)) * currentCount / globalOutlierCount;
     }
 
     public double getOutlierRateNeeded(double[] aggregates, double threshold) {
