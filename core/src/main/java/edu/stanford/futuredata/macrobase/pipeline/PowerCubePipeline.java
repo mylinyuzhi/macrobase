@@ -3,10 +3,12 @@ package edu.stanford.futuredata.macrobase.pipeline;
 import edu.stanford.futuredata.macrobase.analysis.summary.aplinear.*;
 import edu.stanford.futuredata.macrobase.datamodel.DataFrame;
 import edu.stanford.futuredata.macrobase.datamodel.Schema;
+import edu.stanford.futuredata.macrobase.ingest.CSVDataFrameWriter;
 import edu.stanford.futuredata.macrobase.util.MacrobaseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.PrintWriter;
 import java.util.*;
 
 /**
@@ -78,6 +80,9 @@ public class PowerCubePipeline implements Pipeline {
         log.info("Loading time: {}", elapsed);
         log.info("{} rows", df.getNumRows());
         log.info("Attributes: {}", attributes);
+//        CSVDataFrameWriter writer = new CSVDataFrameWriter();
+//        PrintWriter out = new PrintWriter("df_power.csv");
+//        writer.writeToStream(df, out);
 
         startTime = System.currentTimeMillis();
         APLSummarizer summarizer = getSummarizer();

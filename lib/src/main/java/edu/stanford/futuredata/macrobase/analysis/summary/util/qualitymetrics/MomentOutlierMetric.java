@@ -2,6 +2,8 @@ package edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics;
 
 import msolver.MomentSolverBuilder;
 import msolver.struct.MomentStruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
@@ -9,6 +11,7 @@ import java.util.Arrays;
  * Quality metric used in the power cube pipeline. Uses min, max and moments.
  */
 public abstract class MomentOutlierMetric implements QualityMetric {
+    private Logger log = LoggerFactory.getLogger("MomentOutlierMetric");
     int ka;
     int kb;
     private int minIdx;
@@ -21,6 +24,8 @@ public abstract class MomentOutlierMetric implements QualityMetric {
     double quantile;  // eg, 0.99
     double cutoff;
     double globalOutlierCount;
+
+    private int[] callTypeCount = new int[4];
 
     private double tolerance = 1e-9;
     private boolean useCascade = true;
@@ -72,6 +77,7 @@ public abstract class MomentOutlierMetric implements QualityMetric {
             ps[0] = quantile;
             double[] qs = builder.getQuantiles(ps);
             cutoff = qs[0];
+            log.info("Outlier Cutoff: "+cutoff);
         } catch (Exception e) {
             if (ka > 0) {
                 cutoff = quantile * (globalAggregates[maxIdx] - globalAggregates[minIdx]) + globalAggregates[minIdx];
@@ -98,6 +104,7 @@ public abstract class MomentOutlierMetric implements QualityMetric {
         double outlierRateNeeded = getOutlierRateNeeded(aggregates, threshold);
         MomentSolverBuilder builder = getBuilderFromAggregates(aggregates);
         boolean aboveThreshold = builder.checkThreshold(cutoff, outlierRateNeeded);
+        callTypeCount[builder.getCallType()]++;
         if (aboveThreshold) {
             return Action.KEEP;
         } else {
@@ -105,8 +112,13 @@ public abstract class MomentOutlierMetric implements QualityMetric {
         }
     }
 
+    public int[] getCallTypeCount() {
+        return callTypeCount;
+    }
+
     public void setUseCascade(boolean useCascade) { this.useCascade = useCascade; }
     public void setTolerance(double tolerance) { this.tolerance = tolerance; }
+    public double getCutoff() { return cutoff;}
     
     public void setStandardIndices(int minIdx, int maxIdx, int powerSumsBaseIdx) {
         this.minIdx = minIdx;
