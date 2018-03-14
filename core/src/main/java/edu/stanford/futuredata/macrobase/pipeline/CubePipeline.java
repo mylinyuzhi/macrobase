@@ -57,6 +57,7 @@ public class CubePipeline implements Pipeline {
     private List<String> attributes;
     private double minSupport;
     private double minRatioMetric;
+    private String ratioMetric;
 
     private boolean debugDump;
 
@@ -90,6 +91,7 @@ public class CubePipeline implements Pipeline {
         meanColumn = Optional.ofNullable(conf.get("meanColumn"));
         stdColumn = Optional.ofNullable(conf.get("stdColumn"));
         quantileColumns = conf.get("quantileColumns", new LinkedHashMap<String, Double>());
+        ratioMetric = conf.get("ratioMetric", "globalratio");
 
         attributes = conf.get("attributes");
         minSupport = conf.get("minSupport", 3.0);
@@ -244,6 +246,7 @@ public class CubePipeline implements Pipeline {
                 summarizer.setAttributes(attributes);
                 summarizer.setMinSupport(minSupport);
                 summarizer.setMinStdDev(minRatioMetric);
+                summarizer.setRatioMetric(ratioMetric);
                 return summarizer;
             }
             default: {
@@ -254,6 +257,7 @@ public class CubePipeline implements Pipeline {
                 summarizer.setMinSupport(minSupport);
                 summarizer.setMinRatioMetric(minRatioMetric);
                 summarizer.setNumThreads(numThreads);
+                summarizer.setRatioMetric(ratioMetric);
                 return summarizer;
             }
         }
