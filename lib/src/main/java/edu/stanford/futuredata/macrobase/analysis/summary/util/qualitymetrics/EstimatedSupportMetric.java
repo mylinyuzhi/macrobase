@@ -14,7 +14,7 @@ public class EstimatedSupportMetric extends MomentOutlierMetric {
 
     @Override
     public String name() {
-        return "est_support";
+        return "support";
     }
 
     @Override
@@ -26,7 +26,8 @@ public class EstimatedSupportMetric extends MomentOutlierMetric {
         } else {
             currentCount = aggregates[logSumsBaseIdx];
         }
-        return (1 - builder.getCDF(cutoff)) * currentCount / globalOutlierCount;
+        aggregates[outlierCountIdx] = (int)((1-builder.getCDF(cutoff))*currentCount);
+        return aggregates[outlierCountIdx] / globalOutlierCount;
     }
 
     public double getOutlierRateNeeded(double[] aggregates, double threshold) {

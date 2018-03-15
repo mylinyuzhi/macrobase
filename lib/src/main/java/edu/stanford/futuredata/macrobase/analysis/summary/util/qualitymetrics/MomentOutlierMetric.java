@@ -20,6 +20,7 @@ public abstract class MomentOutlierMetric implements QualityMetric {
     private int logMaxIdx;
     int powerSumsBaseIdx;
     int logSumsBaseIdx;
+    int outlierCountIdx;
 
     double quantile;  // eg, 0.99
     double cutoff;
@@ -129,5 +130,8 @@ public abstract class MomentOutlierMetric implements QualityMetric {
         this.logMinIdx = logMinIdx;
         this.logMaxIdx = logMaxIdx;
         this.logSumsBaseIdx = logSumsBaseIdx;
+    }
+    public void setOutlierCountIdx(int outlierCountIdx) {
+        this.outlierCountIdx = outlierCountIdx;
     }
 }
