@@ -1,5 +1,6 @@
 package msolver;
 
+import msolver.util.MathUtil;
 import org.apache.commons.math3.linear.*;
 
 import java.util.Arrays;
