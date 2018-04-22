@@ -42,7 +42,7 @@ public class BCMomentSolver {
     private ChebyshevPolynomial polyPDF, polyCDF;
 
     private int maxSteps = 15;
-    private double tolerance = 0.01;
+    private double tolerance = 1e-6;
     private boolean isConverged;
 
     public BCMomentSolver(
@@ -67,6 +67,7 @@ public class BCMomentSolver {
 
         for (int i=0; i<n; i++) {
             x[i] = Math.cos(Math.PI * i / nBins);
+//            x[i] = Math.cos(Math.PI * (i+.5) / nBins);
         }
         for (int i=0; i<2*k; i++) {
             for (int j=0; j<n; j++) {
@@ -102,10 +103,15 @@ public class BCMomentSolver {
                 DctNormalization.STANDARD_DCT_I
         );
         cs = t.transform(f, TransformType.FORWARD);
-        for (int i = 0; i <= nBins; i++) {
+//        DoubleDCT_1D dct = new DoubleDCT_1D(n);
+//        cs = f.clone();
+//        dct.forward(cs, false);
+
+        for (int i = 0; i < n; i++) {
             cs[i] *= 2.0/nBins;
         }
         cs[0] /= 2;
+//        System.out.println("cs: "+Arrays.toString(cs));
         // optimize
         for (int i = 0; i < e_mu.length; i++) {
             double sum = 0.0;
@@ -206,32 +212,22 @@ public class BCMomentSolver {
             }
         }
 
-        ChebyshevPolynomial expPoly = new ChebyshevPolynomial(lambdas);
-        pdfValues = new double[pdfResolution+1];
-        cdfValues = new double[pdfResolution+1];
-        xValues = new double[pdfResolution+1];
-        for (int i = 0; i <= pdfResolution; i++) {
-            xValues[i] = (i / pdfResolution)*2 - 1;
-            pdfValues[i] = FastMath.exp(expPoly.value(xValues[i]));
-            if (i == 0) {
-                cdfValues[i] = pdfValues[i] / pdfResolution;
-            } else {
-                cdfValues[i] = cdfValues[i-1] + (pdfValues[i]) / pdfResolution;
-            }
+        if(verbose) {
+            System.out.println("Final Lambdas: ");
+            System.out.println(Arrays.toString(lambdas));
         }
-        System.out.println(cdfValues[0]);
-        System.out.println(cdfValues[500]);
+        ChebyshevPolynomial expPoly = new ChebyshevPolynomial(lambdas);
 
-//        polyPDF = ChebyshevPolynomial.fit(
-//                (double x) -> {
-//                    return FastMath.exp(expPoly.value(x));
-//                },
-//                tolerance
-//        );
-//        polyCDF = polyPDF.integralPoly();
-//        if (verbose) {
-//            System.out.println(String.format("CDF Max: %g", polyCDF.value(1)));
-//        }
+        polyPDF = ChebyshevPolynomial.fit(
+                (double x) -> {
+                    return FastMath.exp(expPoly.value(x));
+                },
+                tolerance
+        );
+        polyCDF = polyPDF.integralPoly();
+        if (verbose) {
+            System.out.println(String.format("CDF Max: %g", polyCDF.value(1)));
+        }
         return stepCount;
     }
 

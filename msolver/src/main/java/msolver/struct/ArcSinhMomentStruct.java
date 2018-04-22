@@ -1,5 +1,6 @@
 package msolver.struct;
 
+import msolver.util.MathUtil;
 import org.apache.commons.math3.util.FastMath;
 
 import java.util.Arrays;
@@ -42,10 +43,28 @@ public class ArcSinhMomentStruct {
         this.xr = (this.max - this.min) / 2;
     }
 
+    public double convert(double x) {
+        double xS = FastMath.asinh(x);
+        return (xS - xc) / xr;
+    }
+
     public double invert(double x) {
         double xS = x * xr + xc;
         double xVal = FastMath.sinh(xS);
         return xVal;
+    }
+
+    public double[] getChebyMoments() {
+        return MathUtil.powerSumsToChebyMoments(min, max, powerSums);
+    }
+
+    public double[] getPowerMoments() {
+        double[] shiftedSums = MathUtil.shiftPowerSum(powerSums, xr, xc);
+        double count = shiftedSums[0];
+        for (int i = 0; i < shiftedSums.length; i++) {
+            shiftedSums[i] /= count;
+        }
+        return shiftedSums;
     }
 
     @Override

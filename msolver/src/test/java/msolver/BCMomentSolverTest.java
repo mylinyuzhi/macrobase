@@ -23,22 +23,44 @@ public class BCMomentSolverTest {
                 -0.13495665414439376,
                 0.098911533528841453};
         BCMomentSolver ms = new BCMomentSolver(
-                32, mus.length
+                64, mus.length
         );
         ms.setVerbose(false);
         long startTime = System.nanoTime();
-        int numTrials = 30000;
-//        int numTrials = 1;
+        int numTrials = 1;
         for (int i = 0; i < numTrials; i++) {
             ms.solve(mus);
         }
         long endTime = System.nanoTime();
         long elapsed = endTime - startTime;
         double timePerTrial = elapsed*1.0e-9/numTrials;
-        System.out.println(timePerTrial);
     }
 
     @Test
+    public void testUniform() {
+        int k = 11;
+        int n = 10000;
+        double[] xs = new double[n];
+        for (int i = 0; i < n; i++) {
+            xs[i] = i;
+        }
+        ArcSinhMomentStruct ms = new ArcSinhMomentStruct(k);
+        ms.add(xs);
+
+        double[] mus = ms.getChebyMoments();
+        BCMomentSolver solver = new BCMomentSolver(
+                64, mus.length
+        );
+        solver.setTolerance(1e-6);
+        solver.setVerbose(false);
+        solver.solve(mus);
+
+        double p50 = ms.invert(solver.getQuantile(.5));
+        assertTrue(p50 > n/2 - n/50);
+        assertTrue(p50 < n/2 + n/50);
+    }
+
+        @Test
     public void testHard() throws IOException {
         int n = 10000;
         double[] xs = new double[2*n];
@@ -75,6 +97,7 @@ public class BCMomentSolverTest {
         double timePerTrial = elapsed*1.0e-9/numTrials;
         System.out.println(timePerTrial);
 
+        double q25 = ms.invert(solver.getQuantile(.25));
         double q75 = ms.invert(solver.getQuantile(.75));
         assertTrue(q75 > 4800);
         assertTrue(q75 < 5200);

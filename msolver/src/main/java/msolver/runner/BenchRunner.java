@@ -1,6 +1,7 @@
 package msolver.runner;
 
 import msolver.BCMomentSolver;
+import msolver.PointMassSolver;
 import msolver.struct.ArcSinhMomentStruct;
 import msolver.util.MathUtil;
 
@@ -21,23 +22,26 @@ public class BenchRunner {
         int k = 10;
         ArcSinhMomentStruct ms = new ArcSinhMomentStruct(k);
         ms.add(xs);
-        double[] c_mus = MathUtil.powerSumsToChebyMoments(
-                ms.min,
-                ms.max,
-                ms.powerSums
-        );
+        double[] c_mus = ms.getChebyMoments();
+        double[] p_mus = ms.getPowerMoments();
 
-        BCMomentSolver solver = new BCMomentSolver(
+        BCMomentSolver csolver = new BCMomentSolver(
                 64, k
         );
-        solver.setMaxSteps(20);
-        solver.setTolerance(1e-8);
-        solver.setVerbose(false);
+        csolver.setMaxSteps(20);
+        csolver.setTolerance(1e-8);
+        csolver.setVerbose(false);
+
+        PointMassSolver psolver = new PointMassSolver(
+                k
+        );
+        psolver.setVerbose(false);
 
         long startTime = System.nanoTime();
-        int numTrials = 20000;
+        int numTrials = 40000;
         for (int i = 0; i < numTrials; i++) {
-            solver.solve(c_mus);
+//            csolver.solve(c_mus);
+            psolver.solve(p_mus);
         }
         long endTime = System.nanoTime();
         long elapsed = endTime - startTime;
