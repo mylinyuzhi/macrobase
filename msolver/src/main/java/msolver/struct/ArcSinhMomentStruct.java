@@ -22,14 +22,22 @@ public class ArcSinhMomentStruct {
         this.powerSums = new double[k];
     }
 
+    private void updateScales() {
+        this.xc = (this.min + this.max) / 2;
+        if (this.max > this.min) {
+            this.xr = (this.max - this.min) / 2;
+        } else {
+            this.xr = 1.0;
+        }
+    }
+
     public ArcSinhMomentStruct(
             double min, double max, double[] powerSums
     ) {
         this.min = min;
         this.max = max;
-        this.xc = (this.min + this.max) / 2;
-        this.xr = (this.max - this.min) / 2;
         this.powerSums = powerSums;
+        updateScales();
     }
 
     public void add(double[] xs) {
@@ -41,8 +49,7 @@ public class ArcSinhMomentStruct {
                 powerSums[i] += Math.pow(arcX, i);
             }
         }
-        this.xc = (this.min + this.max) / 2;
-        this.xr = (this.max - this.min) / 2;
+        updateScales();
     }
 
     public double convert(double x) {

@@ -89,7 +89,7 @@ public class PointMassSolver {
             if (verbose) {
                 System.out.println(String.format("SubMatrix %d Ratio: %g", i, ratio));
             }
-            if (ratio < 1e-11) {
+            if (Double.isNaN(ratio) || ratio < 1e-11) {
                 numPoints = i-1;
                 isDiscrete = true;
                 break;
@@ -102,15 +102,21 @@ public class PointMassSolver {
         } else {
             sMoments = mus;
         }
+
         SimpleBoundSolver sSolver = new SimpleBoundSolver(sMoments.length);
-        SimpleBoundSolver.CanonicalDistribution dist = sSolver.getCanonicalDistribution(
-                sMoments
-        );
         if (isDiscrete) {
-            int n = dist.positions.length;
-            points = new PointMass[n];
-            for (int i = 0; i < n; i++) {
-                points[i] = new PointMass(dist.positions[i], dist.weights[i]);
+            if (numPoints > 1) {
+                SimpleBoundSolver.CanonicalDistribution dist = sSolver.getCanonicalDistribution(
+                        sMoments
+                );
+                int n = dist.positions.length;
+                points = new PointMass[n];
+                for (int i = 0; i < n; i++) {
+                    points[i] = new PointMass(dist.positions[i], dist.weights[i]);
+                }
+            } else {
+                points = new PointMass[1];
+                points[0] = new PointMass(mus[1], 1.0);
             }
         } else {
             double[] extremes = {-1, 1};

@@ -10,6 +10,29 @@ import static org.junit.Assert.*;
 
 public class PointMassSolverTest {
     @Test
+    public void testSinglePoint() {
+        int k = 11;
+        double[] xs = {100};
+        ArcSinhMomentStruct ms = new ArcSinhMomentStruct(k);
+        ms.add(xs);
+        double[] mus = ms.getPowerMoments();
+        PointMassSolver solver = new PointMassSolver(k);
+        solver.setVerbose(false);
+        solver.solve(mus);
+        assertEquals(
+                100.0,
+                ms.invert(solver.getQuantile(.6)),
+                1e-7
+        );
+        assertEquals(
+                0.0,
+                solver.getCDF(ms.convert(90)),
+                1e-7
+        );
+    }
+
+
+    @Test
     public void testSmallDiscrete() {
         int k = 11;
         double[] xs = {100, 200, 300};
