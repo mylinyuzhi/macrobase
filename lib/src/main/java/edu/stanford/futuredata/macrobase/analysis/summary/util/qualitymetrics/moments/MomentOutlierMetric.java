@@ -1,5 +1,6 @@
-package edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics;
+package edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics.moments;
 
+import edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics.QualityMetric;
 import msolver.MomentSolverBuilder;
 import msolver.struct.MomentStruct;
 import org.slf4j.Logger;

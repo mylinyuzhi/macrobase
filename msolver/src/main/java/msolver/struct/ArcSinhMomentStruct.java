@@ -6,7 +6,9 @@ import org.apache.commons.math3.util.FastMath;
 import java.util.Arrays;
 
 public class ArcSinhMomentStruct {
+    // arcsinh min, max
     public double min, max;
+    // arcsinh power sums
     public double[] powerSums;
 
     private boolean integral;

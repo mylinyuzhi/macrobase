@@ -88,6 +88,30 @@ public class PointMassSolverTest {
     }
 
     @Test
+    public void testGaussian() {
+        double[] pSumsAll = {
+                851.0, 2241.261731131048, 5919.499795417793, 15677.977395660744,
+                41638.07512524008, 110884.21451481624, 296080.70121092687, 792673.9691043814,
+                2127678.859911787
+       };
+        double[] range = {
+                2.153035101484229, 3.0620760413639414
+        };
+        int k = 9;
+        double[] pSums = Arrays.copyOf(pSumsAll, k);
+        ArcSinhMomentStruct ms = new ArcSinhMomentStruct(range[0], range[1], pSums);
+        PointMassSolver solver = new PointMassSolver(k);
+        solver.setVerbose(false);
+        double[] p_mus = ms.getPowerMoments();
+        solver.solve(p_mus);
+        assertEquals(
+                .65,
+                solver.getCDF(ms.convert(7.4)),
+                .1
+        );
+    }
+
+    @Test
     public void testHybrid() {
         int k = 9;
         int n = 10000;

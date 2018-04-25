@@ -43,7 +43,7 @@ public class FastDCTTest {
         }
         elapsed = System.nanoTime() - startTime;
 //        System.out.println(Arrays.toString(cs));
-        System.out.println(elapsed);
+//        System.out.println(elapsed);
 
         FastDCT dct = new FastDCT(n);
         startTime = System.nanoTime();

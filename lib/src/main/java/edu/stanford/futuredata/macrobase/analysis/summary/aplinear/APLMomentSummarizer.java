@@ -1,6 +1,9 @@
 package edu.stanford.futuredata.macrobase.analysis.summary.aplinear;
 
 import edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics.*;
+import edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics.moments.EstimatedGlobalRatioMetric;
+import edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics.moments.EstimatedSupportMetric;
+import edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics.moments.MomentOutlierMetric;
 import edu.stanford.futuredata.macrobase.datamodel.DataFrame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -95,7 +95,7 @@ public class BCMomentSolverTest {
         long endTime = System.nanoTime();
         long elapsed = endTime - startTime;
         double timePerTrial = elapsed*1.0e-9/numTrials;
-        System.out.println(timePerTrial);
+//        System.out.println(timePerTrial);
 
         double q25 = ms.invert(solver.getQuantile(.25));
         double q75 = ms.invert(solver.getQuantile(.75));

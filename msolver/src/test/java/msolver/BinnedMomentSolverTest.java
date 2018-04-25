@@ -31,7 +31,7 @@ public class BinnedMomentSolverTest {
         long endTime = System.nanoTime();
         long elapsed = endTime - startTime;
         double timePerTrial = elapsed*1.0e-9/numTrials;
-        System.out.println(timePerTrial);
+//        System.out.println(timePerTrial);
     }
 
 }

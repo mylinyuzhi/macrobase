@@ -1,8 +1,6 @@
-package edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics;
+package edu.stanford.futuredata.macrobase.analysis.summary.util.qualitymetrics.moments;
 
-import msolver.ChebyshevMomentSolver2;
 import msolver.MomentSolverBuilder;
-import msolver.struct.MomentStruct;
 
 /**
  * Measures how large a subgroup is relative to a global count
